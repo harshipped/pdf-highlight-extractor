@@ -405,4 +405,5 @@ if __name__ == '__main__':
     static_dir = os.path.join(app.root_path, 'static')
     os.makedirs(static_dir, exist_ok=True)
     logging.info(f"Static directory for frontend: {static_dir}")
-    app.run(host='0.0.0.0', port=8000, debug=False)
+    port = int(os.environ.get("PORT", 8000))
+    app.run(host='0.0.0.0', port=port, debug=False)
