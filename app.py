@@ -30,7 +30,7 @@ CORS(app, resources={
 
 # --- File Upload Configuration ---
 app.config['UPLOAD_FOLDER'] = tempfile.gettempdir()
-app.config['MAX_CONTENT_LENGTH'] = 200 * 1024 * 1024 # 200 MB file size limit
+app.config['MAX_CONTENT_LENGTH'] = 64 * 1024 * 1024 # 64 MB file size limit
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 logging.info(f"Upload folder set to: {app.config['UPLOAD_FOLDER']}")
