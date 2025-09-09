@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Highlight Extractor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+        }
+        .container {
+            max-width: 40rem;
+            width: 100%;
+            background-color: white;
+            border-radius: 1rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            padding: 2.5rem;
+            transition: all 0.3s ease-in-out;
+        }
+        .file-input {
+            display: none;
+        }
+        .file-label {
+            cursor: pointer;
+            border: 2px dashed #d1d5db;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            transition: border-color 0.2s ease-in-out;
+        }
+        .file-label:hover {
+            border-color: #a1a1a1;
+        }
+        .file-label-text {
+            color: #4b5563;
+        }
+        .btn-primary {
+            background-color: #1e40af;
+            color: white;
+            font-weight: 600;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            transition: background-color 0.2s ease-in-out;
+        }
+        .btn-primary:hover {
+            background-color: #1c3290;
+        }
+        .btn-primary:disabled {
+            background-color: #9ca3af;
+            cursor: not-allowed;
+        }
+        .btn-secondary {
+            background-color: #4b5563;
+            color: white;
+            font-weight: 600;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            transition: background-color 0.2s ease-in-out;
+        }
+        .btn-secondary:hover:not(:disabled) {
+            background-color: #374151;
+        }
+        .btn-secondary:disabled {
+            background-color: #9ca3af;
+            cursor: not-allowed;
+        }
+        .warning-message {
+            color: #b91c1c; /* A deep red color */
+            font-size: 0.875rem; /* text-sm */
+            margin-top: 0.5rem;
+            display: none; /* Initially hidden */
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+
+    <div class="container text-center space-y-8">
+        <div class="space-y-2">
+            <h1 class="text-4xl font-bold text-gray-800">PDF Highlight Extractor</h1>
+            <p class="text-gray-500">Extract highlighted text and images from your PDF document.</p>
+        </div>
+
+        <!-- File Upload Section -->
+        <div class="space-y-4">
+            <label for="pdfFile" class="file-label flex flex-col items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                </svg>
+                <span class="mt-2 text-sm font-semibold file-label-text">Click to upload a PDF</span>
+                <input type="file" id="pdfFile" class="file-input" accept="application/pdf">
+            </label>
+            <p id="fileName" class="text-gray-600 text-sm italic"></p>
+        </div>
+
+        <!-- Extraction Options -->
+        <div class="space-y-4">
+            <div class="text-left">
+                <h3 class="font-semibold text-gray-700">PDF Output Options:</h3>
+                <p class="text-sm text-gray-500">Choose how to generate your visual PDF:</p>
+                <div class="mt-2 space-y-2">
+                    <div>
+                        <div class="flex items-center">
+                            <input type="radio" id="fullPage" name="extractionMode" value="full_page" checked class="h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500">
+                            <label for="fullPage" class="ml-2 block text-sm font-medium text-gray-700">Full Page Screenshot (with highlights)</label>
+                        </div>
+                        <p id="fullPageWarning" class="warning-message">
+                            Warning: This option can create very large files, especially for documents with many pages. Recommended for short PDFs.
+                        </p>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="radio" id="croppedHighlight" name="extractionMode" value="cropped_highlight" class="h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500">
+                        <label for="croppedHighlight" class="ml-2 block text-sm font-medium text-gray-700">Cropped Highlight Screenshot</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-4">
+            <button id="uploadBtn" class="btn-primary" onclick="uploadPDF()">
+                <span id="btnText">Upload and Process</span>
+            </button>
+            <button id="downloadPdfBtn" class="btn-secondary" disabled onclick="downloadFile('pdf')">Download PDF</button>
+            <button id="downloadDocxBtn" class="btn-secondary" disabled onclick="downloadFile('docx')">Download DOCX</button>
+        </div>
+
+        <!-- Status and Error Message -->
+        <div id="statusMessage" class="mt-6 text-sm text-gray-600"></div>
+
+    </div>
+
+    <script>
+        // Global variables to store download URLs
+        let pdfDownloadUrl = null;
+        let docxDownloadUrl = null;
+
+        const fullPageRadio = document.getElementById('fullPage');
+        const croppedHighlightRadio = document.getElementById('croppedHighlight');
+        const fullPageWarning = document.getElementById('fullPageWarning');
+
+        document.getElementById('pdfFile').addEventListener('change', function() {
+            const fileName = this.files.length > 0 ? this.files[0].name : '';
+            document.getElementById('fileName').textContent = fileName;
+        });
+        
+        // Show the warning when full page is selected
+        function toggleWarning() {
+            if (fullPageRadio.checked) {
+                fullPageWarning.style.display = 'block';
+            } else {
+                fullPageWarning.style.display = 'none';
+            }
+        }
+
+        fullPageRadio.addEventListener('change', toggleWarning);
+        croppedHighlightRadio.addEventListener('change', toggleWarning);
+        
+        // Initial check on page load
+        toggleWarning();
+
+        async function uploadPDF() {
+            const fileInput = document.getElementById('pdfFile');
+            const file = fileInput.files[0];
+            const uploadBtn = document.getElementById('uploadBtn');
+            const btnText = document.getElementById('btnText');
+            const statusMessage = document.getElementById('statusMessage');
+            const downloadPdfBtn = document.getElementById('downloadPdfBtn');
+            const downloadDocxBtn = document.getElementById('downloadDocxBtn');
+            const extractionMode = document.querySelector('input[name="extractionMode"]:checked').value;
+
+            if (!file) {
+                statusMessage.textContent = 'Please select a PDF file first.';
+                statusMessage.className = 'mt-6 text-sm text-red-600';
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('pdfFile', file);
+            formData.append('extractionMode', extractionMode);
+
+            // Reset UI state
+            pdfDownloadUrl = null;
+            docxDownloadUrl = null;
+            downloadPdfBtn.disabled = true;
+            downloadDocxBtn.disabled = true;
+            btnText.textContent = 'Processing...';
+            uploadBtn.disabled = true;
+            statusMessage.textContent = 'Processing your PDF, please wait...';
+            statusMessage.className = 'mt-6 text-sm text-gray-600';
+
+            try {
+                const response = await fetch('/upload-pdf', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                // This is the updated logic to check if URLs are available
+                if (data.pdf_download_url && data.docx_download_url) {
+                    pdfDownloadUrl = data.pdf_download_url;
+                    docxDownloadUrl = data.docx_download_url;
+                    downloadPdfBtn.disabled = false;
+                    downloadDocxBtn.disabled = false;
+                    statusMessage.textContent = 'Processing complete! Download options are now available.';
+                    statusMessage.className = 'mt-6 text-sm text-green-600';
+                } else {
+                    statusMessage.textContent = 'No highlights found in the PDF. Download options are not available.';
+                    statusMessage.className = 'mt-6 text-sm text-orange-600';
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                statusMessage.textContent = `Error: ${error.message}. Please ensure the backend server is running and try again.`;
+                statusMessage.className = 'mt-6 text-sm text-red-600';
+            } finally {
+                btnText.textContent = 'Upload and Process';
+                uploadBtn.disabled = false;
+            }
+        }
+
+        function downloadFile(type) {
+            const statusMessage = document.getElementById('statusMessage');
+            let url = null;
+            if (type === 'pdf') {
+                url = pdfDownloadUrl;
+            } else if (type === 'docx') {
+                url = docxDownloadUrl;
+            }
+
+            if (url) {
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = url.split('/').pop();
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                statusMessage.textContent = `Downloading ${type.toUpperCase()} file...`;
+                statusMessage.className = 'mt-6 text-sm text-green-600';
+            } else {
+                statusMessage.textContent = `No ${type.toUpperCase()} file available for download.`;
+                statusMessage.className = 'mt-6 text-sm text-red-600';
+            }
+        }
+    </script>
+</body>
+</html>
