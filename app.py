@@ -1,25 +1,32 @@
 # app.py
 import os
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import fitz # PyMuPDF
 import tempfile
 import logging
 from datetime import datetime
-import uuid # For generating unique IDs for temporary files
+import uuid
 from docx import Document
 from docx.shared import Inches, Pt
 from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.shared import Inches
 import re
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='static')
 
 # --- Configure Logging ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # --- CORS Configuration for Production Readiness ---
-CORS(app, resources={r"/upload-pdf": {"origins": "http://localhost"}, r"/download-pdf/*": {"origins": "http://localhost"}, r"/download-docx/*": {"origins": "http://localhost"}})
+# This line dynamically sets the allowed origin based on the APP_DOMAIN environment variable,
+# which DigitalOcean automatically provides. This is a secure and flexible approach.
+app_domain = os.environ.get('APP_DOMAIN', 'localhost')
+allowed_origins = [f"https://{app_domain}", "http://localhost"]
+CORS(app, resources={
+    r"/upload-pdf": {"origins": allowed_origins},
+    r"/download-pdf/*": {"origins": allowed_origins},
+    r"/download-docx/*": {"origins": allowed_origins}
+})
 
 # --- File Upload Configuration ---
 app.config['UPLOAD_FOLDER'] = tempfile.gettempdir()
@@ -352,7 +359,7 @@ def download_pdf(filename):
         return jsonify({"error": "File not found."}), 404
 
     try:
-        response = send_file(file_path, as_attachment=True, download_name=filename, mimetype='application/pdf')
+        response = send_from_directory(app.config['UPLOAD_FOLDER'], filename, as_attachment=True, mimetype='application/pdf')
         
         @response.call_on_close
         def cleanup():
@@ -376,7 +383,7 @@ def download_docx(filename):
         return jsonify({"error": "File not found."}), 404
     
     try:
-        response = send_file(file_path, as_attachment=True, download_name=filename, mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+        response = send_from_directory(app.config['UPLOAD_FOLDER'], filename, as_attachment=True, mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
 
         @response.call_on_close
         def cleanup():
@@ -389,19 +396,10 @@ def download_docx(filename):
         logging.exception(f"Error serving download DOCX file {filename}.")
         return jsonify({"error": "Could not serve the requested file."}), 500
 
-# --- Optional: Serve the frontend HTML directly from Flask for easier local testing ---
+# --- Serve the frontend HTML directly from Flask for easier local testing ---
 @app.route('/')
 def serve_frontend():
-    # Construct the path to the index.html file
-    static_folder = os.path.join(app.root_path, 'static')
-    html_file_path = os.path.join(static_folder, 'index.html')
-    
-    # Check if the file exists before attempting to send it
-    if os.path.exists(html_file_path):
-        return send_file(html_file_path)
-    else:
-        # Handle the case where the file is not found
-        return "Frontend file not found.", 404
+    return send_from_directory(app.static_folder, 'index.html')
 
 if __name__ == '__main__':
     static_dir = os.path.join(app.root_path, 'static')

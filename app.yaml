@@ -1,0 +1,33 @@
+# app.yaml
+# This file is a blueprint for the DigitalOcean App Platform.
+# It defines your application's components and how they should be built, run, and served.
+# This approach is secure and performant as it separates the backend and frontend.
+name: pdf-highlight-extractor
+services:
+  - name: flask-app
+    # DigitalOcean will automatically detect this is a Python app
+    # and use the gunicorn command from your Procfile to run it.
+    github:
+      # You will replace this with your GitHub repository information
+      repo: harshipped/pdf-highlight-extractor
+      branch: main
+      deploy_on_push: true
+    instance_size_slug: basic-xxs
+    # The routes for your backend API
+    routes:
+      - path: /upload-pdf
+      - path: /download-pdf/*
+      - path: /download-docx/*
+  
+  # This component serves your static HTML, CSS, and JS files.
+  # DigitalOcean App Platform serves these files from a fast CDN.
+  - name: frontend-static-site
+    static_site:
+      # This tells the platform where to find your static files
+      # In your case, it's just the index.html in the root.
+      # We'll put it in a 'static' folder to match the updated app.py
+      # so the build and routing are simpler.
+      build_command: "cp index.html static/"
+      output_dir: static
+      routes:
+        - path: /
